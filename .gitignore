@@ -11,3 +11,4 @@ merge2.py
 merge3.py
 merge4.py
 .DS_Store
+*.numbers
