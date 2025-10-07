@@ -3,13 +3,12 @@ import csv
 import json
 import logging
 import os
-from pathlib import Path
-from Processor.data_pipeline import DataPipeline
-from Processor.checkpoint_processor import ProcessingState
-# from Data_Enrichment.data_enrichment import run_enrichment as p_enrichment
-from Data_Enrichment_Google.enrichment import run_enrichment as g_enrichment
-from typing import List
+
 from aiolimiter import AsyncLimiter
+from Data_Enrichment_Google.enrichment1 import run_enrichment as g_enrichment
+from pathlib import Path
+from Processor.checkpoint_processor import ProcessingState
+from Processor.data_pipeline import DataPipeline
 
 
 logging.basicConfig(
@@ -20,9 +19,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 CONFIG = {
-    "FILE_PATH": Path("data/TB test Run 2.csv"),
-    "JSON_FILE_PATH": Path("data/TB test Run 2.json"),
-    "ENRICHED_DATA_PATH": Path("data/gemini_enriched_data.json"),
+    "FILE_PATH": Path("data/data2.csv"),
+    "JSON_FILE_PATH": Path("data/data2.json"),
+    "ENRICHED_DATA_PATH": Path("data/gemini_enriched_data2.json"),
     "CHECKPOINT_DIR": Path("checkpoints/"),
     "CHECKPOINT_INTERVAL": 50,
     "QUEUE_SIZE": 100,
@@ -87,7 +86,7 @@ async def stage_one(path, file_name, log_file, config, run_process, enriched_dat
         log_file,
         config,
         run_process,
-        rate_limit=(5, 1),
+        rate_limit=(10, 1),
         max_concurrent_sessions=CONFIG["MAX_CONCURRENT_REQUESTS"]
     )
     runner_instance.state.save_checkpoint(log_file, config)
@@ -96,13 +95,13 @@ async def stage_one(path, file_name, log_file, config, run_process, enriched_dat
 
 async def main():
     dataset_paths = [
-        ("TB test Run 2", CONFIG["FILE_PATH"].parent),
+        ("data2", CONFIG["FILE_PATH"].parent),
     ]
 
     file_name = dataset_paths[0][0]
     path = dataset_paths[0][1]
     enriched = CONFIG["ENRICHED_DATA_PATH"]
-    prepare_file(CONFIG["FILE_PATH"], CONFIG["JSON_FILE_PATH"])
+    # prepare_file(CONFIG["FILE_PATH"], CONFIG["JSON_FILE_PATH"])
 
     await stage_one(path, file_name, logger, CONFIG, g_enrichment, enriched)
 

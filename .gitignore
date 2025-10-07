@@ -4,6 +4,10 @@ checkpoints
 .env
 dnt
 venv
-GEDET1.csv
-GEDT1.csv
+*.csv
 *.log
+merge.py
+merge2.py
+merge3.py
+merge4.py
+.DS_Store

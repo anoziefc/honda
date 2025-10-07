@@ -6,7 +6,7 @@ import re
 def remove_citations(text: str) -> str:
     return re.sub(r' \[\d+(?:, \d+)*\]', '', text)
 
-with open("data/gemini_enriched_data_essence.json", "r", encoding="utf-8") as f:
+with open("data/gemini_enriched_data2.json", "r", encoding="utf-8") as f:
     data = json.load(f)
 
 new_data = []
@@ -19,11 +19,12 @@ for item in data:
             new_item[key] = value
     new_data.append(new_item)
 
-csv_file = "GEDET1.csv"
+csv_file = "GEDET_2.csv"
 with open(csv_file, mode='w', newline='', encoding='utf-8') as file:
     writer = csv.DictWriter(file, fieldnames=[
         "Company Name",
         "In Scope?",
+        "Relevance",
         "Uniqueness Score",
         "Uniqueness Why?",
         "Function/Effectiveness score",
@@ -51,6 +52,7 @@ with open(csv_file, mode='w', newline='', encoding='utf-8') as file:
         row = {
             "Company Name": item["company_name"],
             "In Scope?": item["in_scope"],
+            "Relevance": item["relevance"],
             "Uniqueness Score": item["uniqueness_score"],
             "Uniqueness Why?": item["uniqueness_why"],
             "Function/Effectiveness score": item["effectiveness_score"],
@@ -69,7 +71,7 @@ with open(csv_file, mode='w', newline='', encoding='utf-8') as file:
             "Funding Information": item["current_funding_information"],
             "Core Technology": item["core_technology_used"],
             "Development Stage": item["known_development_stage"],
-            "Action": item["action"]
+            "Action": item.get("action", "")
         }
 
         writer.writerow(row)
