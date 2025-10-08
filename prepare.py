@@ -24,4 +24,4 @@ def prepare_file(file_path: Path, output_dir: Path, chunk_size: int = 1000):
 
 fp = Path("data/data.csv")
 op = Path("data")
-prepare_file()
+prepare_file(fp, op)
