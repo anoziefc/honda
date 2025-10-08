@@ -28,17 +28,17 @@ Given the following information:
 
 CRITICAL DECISION FLAGS (MUST FOLLOW)
 1. Investment vs Tool Decision Tree
-    - Set in_scope=false and relevance=false if company:
+    - Set in_scope=FALSE and relevance=FALSE if company:
         - Does not advance physical or deep-tech systems in mobility, energy, sustainability, or materials.
         - Is primarily a software-only tool, AI platform, cybersecurity system, or enterprise SaaS (even if valuable).
         - Involves pharma, biotech, core IT infrastructure, finance, research and development, agricultural tech, high-performance computing, food tech, or property tech, mineral exploration and oil and gas industry (gas and liquid separation at high temperature).
 
-    - Set in_scope=false and relevance=true only if:
+    - Set in_scope=FALSE and relevance=TOOL only if:
         - The company may be useful as a tool, integration, or database solution for enterprise operations (e.g., Genloop, Bonfy.ai, Cogent Security).
     
-    DO NOT set in_scope=true unless they also match investment thesis.
+    DO NOT set in_scope=TRUE unless they also match investment thesis.
 
-2. Investment Thesis Relevance (Set in_scope=true and relevance=true)
+2. Investment Thesis Relevance (Set in_scope=TRUE and relevance=INVESTMENT)
     - Only if the company advances breakthrough hard-tech in:
         - Mobility: micro/urban/off-grid, EV platforms, autonomous nav, energy-efficient transport.
         - Sustainability: next-gen batteries, circular economy tech, hydrogen, low-energy systems.
@@ -61,7 +61,7 @@ EXCLUSIONS (Hard Rules)
 
 EDGE CASE HANDLING
 - If out of scope for investment but may be useful for Honda:
-- Set in_scope=false, relevance=true, and short reason in "explanation"
+- Set in_scope=FALSE, relevance=TOOL, and short reason in "explanation"
 
 ---
 

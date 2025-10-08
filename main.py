@@ -19,25 +19,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 CONFIG = {
-    "FILE_PATH": Path("data/data2.csv"),
-    "JSON_FILE_PATH": Path("data/data2.json"),
-    "ENRICHED_DATA_PATH": Path("data/gemini_enriched_data2.json"),
+    "FILE_PATH": Path("data/companies_1.json"),
+    "ENRICHED_DATA_PATH": Path("data/GED.json"),
     "CHECKPOINT_DIR": Path("checkpoints/"),
     "CHECKPOINT_INTERVAL": 50,
     "QUEUE_SIZE": 100,
     "MAX_CONCURRENT_REQUESTS": 10
 }
-
-def prepare_file(file_path: Path, json_file_path: Path):
-    companies = []
-    with open(file_path, newline='', encoding="utf-8") as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            name = row.get("Companies") or None
-            website = row.get("Company Website") or None
-            companies.append({"name": name, "website": website})
-    with open(json_file_path, "w") as json_file:
-        json.dump(companies, json_file, indent=4, ensure_ascii=False)
 
 def append_to_json_file(new_data, filepath):
     if os.path.exists(filepath):
@@ -95,14 +83,12 @@ async def stage_one(path, file_name, log_file, config, run_process, enriched_dat
 
 async def main():
     dataset_paths = [
-        ("data2", CONFIG["FILE_PATH"].parent),
+        ("data", CONFIG["FILE_PATH"].parent),
     ]
 
     file_name = dataset_paths[0][0]
     path = dataset_paths[0][1]
     enriched = CONFIG["ENRICHED_DATA_PATH"]
-    # prepare_file(CONFIG["FILE_PATH"], CONFIG["JSON_FILE_PATH"])
-
     await stage_one(path, file_name, logger, CONFIG, g_enrichment, enriched)
 
     return
