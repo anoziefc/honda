@@ -35,7 +35,6 @@ CRITICAL DECISION FLAGS (MUST FOLLOW)
 
     - Set in_scope=false and relevance=true only if:
         - The company may be useful as a tool, integration, or database solution for enterprise operations (e.g., Genloop, Bonfy.ai, Cogent Security).
-        - The company 
     
     DO NOT set in_scope=true unless they also match investment thesis.
 
