@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Set
+from typing import Dict, Optional, Set, Self
 import time
 import datetime
 import json
 import os
+from logging import Logger
 
 
 @dataclass
@@ -15,7 +16,7 @@ class ProcessingState:
     total_items: int = 0
     started_at: float = field(default_factory=time.monotonic)
 
-    def save_checkpoint(self, logger, CONFIG: Dict):
+    def save_checkpoint(self, logger: Logger, CONFIG: Dict):
         CONFIG["CHECKPOINT_DIR"].mkdir(parents=True, exist_ok=True)
         tmp_file = CONFIG["CHECKPOINT_DIR"] / "processing_state.tmp"
         final_file = CONFIG["CHECKPOINT_DIR"] / "processing_state.json"
@@ -33,7 +34,7 @@ class ProcessingState:
         logger.info(f"Checkpoint saved: {self.total_processed}/{self.total_items} items processed")
 
     @classmethod
-    def load_checkpoint(cls, logger, CONFIG: Dict):
+    def load_checkpoint(cls, logger: Logger, CONFIG: Dict) ->Self:
         file = CONFIG["CHECKPOINT_DIR"] / "processing_state.json"
         if not file.exists():
             logger.info("No checkpoint found, starting fresh")

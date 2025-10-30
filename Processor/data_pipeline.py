@@ -4,12 +4,14 @@ import os
 import random
 import re
 from pathlib import Path
+from logging import Logger
 from typing import Dict, Optional, Any, List
 from aiolimiter import AsyncLimiter
+from Processor.checkpoint_processor import ProcessingState
 
 
 class DataPipeline:
-    def __init__(self, ProcessingState, logger, dataset_paths: List[Path], CONFIG: Dict, resume: bool = True):
+    def __init__(self, ProcessingState: ProcessingState, logger: Logger, dataset_paths: List[Path], CONFIG: Dict, resume: bool = True):
         self.logger = logger
         self.CONFIG = CONFIG
         self.queue = asyncio.Queue(maxsize=self.CONFIG["QUEUE_SIZE"])
@@ -83,7 +85,7 @@ class DataPipeline:
         except Exception as e:
             self.logger.error(f"Producer error: {e}", exc_info=True)
 
-    async def consumer(self, process, worker_id: int, limiter=None, semaphore=None):
+    async def consumer(self, process, worker_id: int, limiter=None, semaphore=None, base_data=None):
         try:
             while True:
                 item = await self.queue.get()
@@ -99,9 +101,9 @@ class DataPipeline:
 
                     if semaphore:
                         async with semaphore:
-                            result = await self.process_with_limiter(process, dataset, _file, item_id, data, limiter)
+                            result = await self.process_with_limiter(process, dataset, _file, item_id, data, limiter, base_data)
                     else:
-                        result = await self.process_with_limiter(process, dataset, _file, item_id, data, limiter)
+                        result = await self.process_with_limiter(process, dataset, _file, item_id, data, limiter, base_data)
 
                     if result:
                         cleaned_result = {}
@@ -128,14 +130,14 @@ class DataPipeline:
         except Exception as e:
             self.logger.error(f"Consumer error on item {item.get('id')}: {e}", exc_info=True)
 
-    async def process_item(self, process, dataset: str, f: str, item_id: str, data: Dict[str, Any], limiter: Optional[AsyncLimiter] = None) -> Optional[Dict[str, Any]]:
+    async def process_item(self, process, dataset: str, f: str, item_id: str, data: Dict[str, Any], limiter: Optional[AsyncLimiter] = None, base_data: Dict = {}) -> Optional[Dict[str, Any]]:
         self.logger.debug(f"[{dataset}] Processed item {item_id} from {f}")
-        retVal = await process(self.logger, data, limiter)
+        retVal = await process(self.logger, data, limiter, base_data)
         return retVal
 
-    async def process_with_limiter(self, process, dataset, _file, item_id, data, rate_limiter):
+    async def process_with_limiter(self, process, dataset, _file, item_id, data, rate_limiter, base_data):
         async def wrapped():
-            return await self.process_item(process, dataset, _file, item_id, data, rate_limiter)
+            return await self.process_item(process, dataset, _file, item_id, data, rate_limiter, base_data)
 
         async def throttled_retry():
             async with rate_limiter:

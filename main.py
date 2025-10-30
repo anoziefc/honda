@@ -1,5 +1,4 @@
 import asyncio
-import csv
 import json
 import logging
 import os
@@ -20,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 CONFIG = {
     "FILE_PATH": Path("data/companies_1.json"),
+    "HONDA_PATH": Path("data/honda.json"),
     "ENRICHED_DATA_PATH": Path("data/GED.json"),
     "CHECKPOINT_DIR": Path("checkpoints/"),
     "CHECKPOINT_INTERVAL": 50,
@@ -43,7 +43,7 @@ def append_to_json_file(new_data, filepath):
     with open(filepath, 'w', encoding='utf-8') as f:
         json.dump(existing_data, f, indent=4, ensure_ascii=False)
 
-async def runner(path, file_name, log_file, config, task_to_run, rate_limit, max_concurrent_sessions):
+async def runner(path, file_name, log_file, config, task_to_run, base_data, rate_limit, max_concurrent_sessions):
     ps = ProcessingState()
     pipeline = DataPipeline(ps, log_file, dataset_paths=[path], CONFIG=config)
 
@@ -55,7 +55,7 @@ async def runner(path, file_name, log_file, config, task_to_run, rate_limit, max
     ]
 
     consumer_tasks = [
-        asyncio.create_task(pipeline.consumer(task_to_run, i, limiter, semaphore))
+        asyncio.create_task(pipeline.consumer(task_to_run, i, limiter, semaphore, base_data))
             for i in range(CONFIG["MAX_CONCURRENT_REQUESTS"])
     ]
 
@@ -67,13 +67,14 @@ async def runner(path, file_name, log_file, config, task_to_run, rate_limit, max
     await asyncio.gather(*consumer_tasks)
     return pipeline
 
-async def stage_one(path, file_name, log_file, config, run_process, enriched_data):
+async def stage_one(path, file_name, log_file, config, run_process, enriched_data, base_data):
     runner_instance = await runner(
         path,
         file_name,
         log_file,
         config,
         run_process,
+        base_data,
         rate_limit=(10, 1),
         max_concurrent_sessions=CONFIG["MAX_CONCURRENT_REQUESTS"]
     )
@@ -84,12 +85,17 @@ async def stage_one(path, file_name, log_file, config, run_process, enriched_dat
 async def main():
     dataset_paths = [
         ("data", CONFIG["FILE_PATH"].parent),
+        ("honda_data", CONFIG["HONDA_PATH"].parent)
     ]
 
     file_name = dataset_paths[0][0]
     path = dataset_paths[0][1]
     enriched = CONFIG["ENRICHED_DATA_PATH"]
-    await stage_one(path, file_name, logger, CONFIG, g_enrichment, enriched)
+    honda_details = None
+    honda_path = f"{dataset_paths[1][1]}/{dataset_paths[1][0]}.json"
+    with open(honda_path, "r") as honda_file:
+        honda_details = honda_file.read()
+    await stage_one(path, file_name, logger, CONFIG, g_enrichment, enriched, honda_details)
 
     return
 
