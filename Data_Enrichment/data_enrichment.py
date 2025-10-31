@@ -290,7 +290,6 @@ async def run_enrichment(file_path):
         de["Name"] = name
         de["Website"] = website
         append_to_json_file(de, "perplexity_enriched_data_v2_tab_2.json")
-        print("Done")
 
 async def main(file_path):
     data = read_csv_to_dicts(file_path=file_path)
@@ -308,7 +307,6 @@ async def main(file_path):
         de["Name"] = name
         de["Website"] = website
         append_to_json_file(de, "perplexity_enriched_data_v2_tab_2.json")
-        print("Done")
 
 
 if __name__ == "__main__":
