@@ -319,30 +319,28 @@ async def run_enrichment(logger, data: Dict[str, Any], limiter: Optional[AsyncLi
     try:
         company_data = await get_company_data(name, gemini_api_key)
         prompt = Prompt(company_name=name, company_website=website)
-        print(prompt.comparison_prompt(base_data=base_data, company_data=company_data))
         logger.info(f"Processing: {name}")
 
         if limiter:
             async with limiter:
                 pass
-                # comparison = GeminiChat(
-                #     api_key=gemini_api_key,
-                #     prompt=prompt.comparison_prompt(base_data=base_data, company_data=company_data)
-                # )
-                # comparison_response = await comparison.send_request()
-                # print(comparison_response)
-                # gemini_enchriment = GeminiChat(
-                #     api_key=gemini_api_key,
-                #     prompt=prompt.construct_prompt(comparison=comparison_response)
-                # )
-                # response = await gemini_enchriment.send_request()
-        # else:
-        #     response = await gemini_enchriment.send_request()
+                comparison = GeminiChat(
+                    api_key=gemini_api_key,
+                    prompt=prompt.comparison_prompt(base_data=base_data, company_data=company_data)
+                )
+                comparison_response = await comparison.send_request()
+                gemini_enchriment = GeminiChat(
+                    api_key=gemini_api_key,
+                    prompt=prompt.construct_prompt(comparison=comparison_response)
+                )
+                response = await gemini_enchriment.send_request()
+        else:
+            response = await gemini_enchriment.send_request()
 
-        # if response:
-        #     extracted_data = extract_json_from_markdown(response)
-        # else:
-        #     logger.warning(f"No result for {name}")
+        if response:
+            extracted_data = extract_json_from_markdown(response)
+        else:
+            logger.warning(f"No result for {name}")
     except Exception as e:
         print(f"Attempt failed: {e}")
     return extracted_data
