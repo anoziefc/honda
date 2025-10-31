@@ -1,10 +1,15 @@
 from google import genai
 from google.genai import types
 from typing import Any, Dict
+from dotenv import load_dotenv
 
 import asyncio
 import json
+import os
 import re
+
+
+load_dotenv()
 
 
 class Prompt:
@@ -167,10 +172,11 @@ class GeminiChat:
                     if blob_match:
                         json_candidate = blob_match.group(1).strip()
 
-            if not json_candidate:
-                raise ValueError("No valid JSON object found in the content.")
-
-            parsed_json = json.loads(json_candidate)
+            if json_candidate:
+                parsed_json = json.loads(json_candidate)
+            else:
+                description = json_part
+                parsed_json = {}
 
             if description:
                 parsed_json["description"] = description
@@ -185,7 +191,7 @@ class GeminiChat:
 
 
 async def main():
-    api_key = 'AIzaSyAHYQ3FNi3u_qfZvvg-xMQ9Saa44w5R7sM'
+    api_key = os.getenv("GEMINI_KEY")
     prompt = Prompt().construct_prompt("Honda Xcelerator Ventures")
 
     chat = GeminiChat(

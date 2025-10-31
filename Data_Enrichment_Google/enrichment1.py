@@ -61,11 +61,11 @@ The data is formatted as JSON objects with the same structure.
             "financial_alignment": "Analysis of revenue models, margins, valuation, etc.",
             "risk_assessment": "Potential risks or challenges in investing in Company B."
         }}
-        "recommendation": {
+        "recommendation": {{
             "is_good_investment": true,
             "rationale": "Reasoning for the recommendation",
             "next_steps": [ "Suggested actions or further research" ]
-        }
+        }}
     }}
 """
 
@@ -73,10 +73,12 @@ The data is formatted as JSON objects with the same structure.
         return f"""
 You are a company analyst and deep-tech investment screener.
 You will analyze companies for relevance to our hard-tech investment thesis and enterprise tool applicability.
+You will be given the dictionary of a comparison between the company and our business
 
 Given the following information:
     - Company Name: {self.company_name}
     - Company Website: {self.company_website}
+    - Comparison Dictionary: {comparison}
 
 ---
 
@@ -315,25 +317,32 @@ async def run_enrichment(logger, data: Dict[str, Any], limiter: Optional[AsyncLi
     website: str = data.get("website") or ""
 
     try:
-        company_data = get_company_data(name, gemini_api_key)
+        company_data = await get_company_data(name, gemini_api_key)
         prompt = Prompt(company_name=name, company_website=website)
-        comparison = prompt.comparison_prompt(base_data=base_data, company_data=company_data)
-        gemini_enchriment = GeminiChat(
-            api_key=gemini_api_key,
-            prompt=prompt.construct_prompt(comparison=comparison)
-        )
+        print(prompt.comparison_prompt(base_data=base_data, company_data=company_data))
         logger.info(f"Processing: {name}")
 
         if limiter:
             async with limiter:
-                response = await gemini_enchriment.send_request()
-        else:
-            response = await gemini_enchriment.send_request()
+                pass
+                # comparison = GeminiChat(
+                #     api_key=gemini_api_key,
+                #     prompt=prompt.comparison_prompt(base_data=base_data, company_data=company_data)
+                # )
+                # comparison_response = await comparison.send_request()
+                # print(comparison_response)
+                # gemini_enchriment = GeminiChat(
+                #     api_key=gemini_api_key,
+                #     prompt=prompt.construct_prompt(comparison=comparison_response)
+                # )
+                # response = await gemini_enchriment.send_request()
+        # else:
+        #     response = await gemini_enchriment.send_request()
 
-        if response:
-            extracted_data = extract_json_from_markdown(response)
-        else:
-            logger.warning(f"No result for {name}")
+        # if response:
+        #     extracted_data = extract_json_from_markdown(response)
+        # else:
+        #     logger.warning(f"No result for {name}")
     except Exception as e:
         print(f"Attempt failed: {e}")
     return extracted_data

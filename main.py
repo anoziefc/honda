@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 CONFIG = {
     "FILE_PATH": Path("data/companies_1.json"),
-    "HONDA_PATH": Path("data/honda.json"),
+    "DATA_PATH": Path("data/new_honda_f.json"),
     "ENRICHED_DATA_PATH": Path("data/GED.json"),
     "CHECKPOINT_DIR": Path("checkpoints/"),
     "CHECKPOINT_INTERVAL": 50,
@@ -85,7 +85,7 @@ async def stage_one(path, file_name, log_file, config, run_process, enriched_dat
 async def main():
     dataset_paths = [
         ("data", CONFIG["FILE_PATH"].parent),
-        ("honda_data", CONFIG["HONDA_PATH"].parent)
+        ("new_honda_f", CONFIG["DATA_PATH"].parent)
     ]
 
     file_name = dataset_paths[0][0]
@@ -94,7 +94,9 @@ async def main():
     honda_details = None
     honda_path = f"{dataset_paths[1][1]}/{dataset_paths[1][0]}.json"
     with open(honda_path, "r") as honda_file:
-        honda_details = honda_file.read()
+        honda_details = json.load(honda_file)
+    honda_path_jsonl = honda_path.replace(".json", ".jsonl")
+    os.rename(honda_path, honda_path_jsonl)
     await stage_one(path, file_name, logger, CONFIG, g_enrichment, enriched, honda_details)
 
     return
