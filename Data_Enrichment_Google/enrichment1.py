@@ -220,6 +220,54 @@ combined_score = round( uniqueness_score*0.5 + effectiveness_score*0.3 + market_
 21. known_development_stage
 22. action
 """.strip()
+    
+    def update_response(self, resp_data: Dict) -> str:
+        return f"""
+You're a company data analyst. Your task is to analyse based on the data available on the internet and the data given to you, re-evaluate if a company should be an investment opportunity for us.
+Use the following analytic criteria to evaluate.
+- If a company is marked in the relevance column as "INVESTMENT", evaluate:
+    - The space the company works in, if the space is a crowded space, or a space with relatively few competitors.
+    - The comparative advantage of the company. Is the business in an advantagous position even though it's in a relatively crowded space.
+    - The team behind the business. Is the team running the business a team with expansive experience running very successful businesses.
+    - The investment stage of the business. Is the business an early stage investment? Would it bake sense to invest in the business at this time?
+    - The business mode. Is the business in deruptive mode? Is the business actively developing new tech or solutions albeit being in a relatively crowded space.
+Based on all these, re-evaluate the relevance and uniquenece scoring of the business.
+    - Businesses in crowded spaces should generally have a low uniqueness score.
+    - Businesses in deruptive mode or ealy stage investments should have higher uniqueness scoring.
+    - Businesses that have an X-factor, a team with a stellar record in building businesses should have a score that biase.
+    - Businesses in sparce sectors should have higher scores.
+    - If a business is in a sparce sector but hasn't been innovative in the past year or isn't currently working on a technology or building something new, it should negatively affect it's uniqueness score.
+NB:
+    - scoring should fall between 0 - 10, 0 being least unique and 10 being extremely unique.
+    - if the uniqueness score is affected by your analysis, update other parts of the response to reflect these changes.
+
+Here is the company data: {resp_data}.
+
+**OUTPUT_SCHEMA**
+### Provide result as a JSON with fields:
+1. company_name
+2. relevance
+3. explanation
+4. uniqueness_score
+5. uniqueness_why
+6. effectiveness_score
+7. effectiveness_why
+8. market_diff_score
+9. combined_score
+10. confidence
+11. brief_description
+12. wow_one_liner
+13. founders
+14. technologies
+15. applications
+16. products
+17. customer_engagements
+18. hq_location
+19. current_funding_information
+20. core_technology_used
+21. known_development_stage
+22. action
+"""
 
 
 class GeminiChat:
@@ -334,13 +382,23 @@ async def run_enrichment(logger, data: Dict[str, Any], limiter: Optional[AsyncLi
                     prompt=prompt.construct_prompt(comparison=comparison_response)
                 )
                 response = await gemini_enchriment.send_request()
+                if response:
+                    extracted_data = extract_json_from_markdown(response)
+                    new_prompt = prompt.update_response(extracted_data)
+                    gemini_update = GeminiChat(
+                        api_key=gemini_api_key,
+                        prompt=new_prompt
+                    )
+                    resp = await gemini_update.send_request()
+                    if resp:
+                        extracted_data = extract_json_from_markdown(resp)
+                    else:
+                        logger.warning(f"No result for {name}")
+                else:
+                    logger.warning(f"No result for {name}")
         else:
             response = await gemini_enchriment.send_request()
 
-        if response:
-            extracted_data = extract_json_from_markdown(response)
-        else:
-            logger.warning(f"No result for {name}")
     except Exception as e:
         print(f"Attempt failed: {e}")
     return extracted_data
