@@ -13,3 +13,7 @@ merge4.py
 .DS_Store
 *.numbers
 dont_push
+*.json
+*.jsonl
+rework_investments.py
+relevance_count.py

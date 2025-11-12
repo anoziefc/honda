@@ -1,10 +1,12 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Set, Self
+from filelock import FileLock
+from typing import Dict, List, Optional, Set, Self
 import time
 import datetime
 import json
 import os
 from logging import Logger
+from pathlib import Path
 
 
 @dataclass
@@ -16,7 +18,13 @@ class ProcessingState:
     total_items: int = 0
     started_at: float = field(default_factory=time.monotonic)
 
-    def save_checkpoint(self, logger: Logger, CONFIG: Dict):
+    def append_to_json_file(self, new_data: Dict, filepath: Path):
+        with FileLock(filepath):
+            with open(filepath, 'a', encoding='utf-8') as f:
+                json.dump(new_data, f, ensure_ascii=False)
+                f.write('\n')
+
+    def save_checkpoint(self, logger: Logger, CONFIG: Dict, results: List, path: Path):
         CONFIG["CHECKPOINT_DIR"].mkdir(parents=True, exist_ok=True)
         tmp_file = CONFIG["CHECKPOINT_DIR"] / "processing_state.tmp"
         final_file = CONFIG["CHECKPOINT_DIR"] / "processing_state.json"
@@ -30,6 +38,8 @@ class ProcessingState:
         }
         with open(tmp_file, "w") as f:
             json.dump(data, f, indent=2)
+        self.append_to_json_file(results, path)
+        results.clear()
         os.replace(tmp_file, final_file)
         logger.info(f"Checkpoint saved: {self.total_processed}/{self.total_items} items processed")
 

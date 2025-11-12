@@ -53,6 +53,7 @@ class DataPipeline:
                         continue
 
                     key = f"{dataset_label}:{f}"
+                    self.state.total_items = len(data)
                     self.state.processed_items.setdefault(key, set())
 
                     if isinstance(data, dict):
@@ -85,7 +86,8 @@ class DataPipeline:
         except Exception as e:
             self.logger.error(f"Producer error: {e}", exc_info=True)
 
-    async def consumer(self, process, worker_id: int, limiter=None, semaphore=None, base_data=None):
+    async def consumer(self, process, worker_id: int, limiter=None, semaphore=None, base_data=None, enriched_data=None):
+        checkpoint_lock = asyncio.Lock()
         try:
             while True:
                 item = await self.queue.get()
@@ -106,19 +108,17 @@ class DataPipeline:
                         result = await self.process_with_limiter(process, dataset, _file, item_id, data, limiter, base_data)
 
                     if result:
-                        cleaned_result = {}
-                        for key, value in result.items():
-                            if isinstance(value, str):
-                                cleaned_result[key] = self.remove_citations(value)
-                            else:
-                                cleaned_result[key] = value
+                        cleaned_result = {k: (self.remove_citations(v) if isinstance(v, str) else v)
+                                          for k, v in result.items()}
                         key = f"{dataset}:{_file}"
                         self.state.processed_items.setdefault(key, set()).add(item_id)
                         self.state.total_processed += 1
-                        self.results.append(result)
+                        self.results.append(cleaned_result)
 
                     if self.state.total_processed % self.CONFIG["CHECKPOINT_INTERVAL"] == 0:
-                        self.state.save_checkpoint(self.logger, self.CONFIG)
+                        async with checkpoint_lock:
+                            await asyncio.to_thread(self.state.save_checkpoint, self.logger, self.CONFIG, self.results, enriched_data)
+                            self.logger.info(f"[Worker-{worker_id}]: Saved {len(self.results)} results to file.")
 
                     if self.state.total_processed % 100 == 0:
                         self.logger.info(f"[Worker-{worker_id}] Total processed so far: {self.state.total_processed}")
@@ -127,6 +127,11 @@ class DataPipeline:
                     self.logger.error(f"Consumer error on item {item.get('id')}: {e}", exc_info=True)
                 finally:
                     self.queue.task_done()
+
+            async with checkpoint_lock:
+                await asyncio.to_thread(self.state.save_checkpoint, self.logger, self.CONFIG, self.results, enriched_data)
+                self.logger.info(f"[Worker-{worker_id}] Final flush: saved {len(self.results)} remaining results")
+
         except Exception as e:
             self.logger.error(f"Consumer error on item {item.get('id')}: {e}", exc_info=True)
 

@@ -2,7 +2,7 @@ from aiolimiter import AsyncLimiter
 from google import genai
 from google.genai import types
 from google.genai.types import GenerateContentResponse
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from company_info import GeminiChat as cigc, Prompt as cip
 
 import json
@@ -220,12 +220,11 @@ combined_score = round( uniqueness_score*0.5 + effectiveness_score*0.3 + market_
 21. known_development_stage
 22. action
 """.strip()
-    
-    def update_response(self, resp_data: Dict) -> str:
+
+    def compare_companies(self, my_data: Dict, data: List[Dict[str, Any]]) -> str:
         return f"""
-You're a company data analyst. Your task is to analyse based on the data available on the internet and the data given to you, re-evaluate if a company should be an investment opportunity for us.
-Use the following analytic criteria to evaluate.
-- If a company is marked in the relevance column as "INVESTMENT", evaluate:
+You are a data analyst, based on information on the internet and my company information {my_data}, re-evaluate the uniqueness scores of these business {data}.
+**Evaluation Guide**
     - The space the company works in, if the space is a crowded space, or a space with relatively few competitors.
     - The comparative advantage of the company. Is the business in an advantagous position even though it's in a relatively crowded space.
     - The team behind the business. Is the team running the business a team with expansive experience running very successful businesses.
@@ -239,34 +238,18 @@ Based on all these, re-evaluate the relevance and uniquenece scoring of the busi
     - If a business is in a sparce sector but hasn't been innovative in the past year or isn't currently working on a technology or building something new, it should negatively affect it's uniqueness score.
 NB:
     - scoring should fall between 0 - 10, 0 being least unique and 10 being extremely unique.
+    - scoring shold always be in whole numbers, never decimals
     - if the uniqueness score is affected by your analysis, update other parts of the response to reflect these changes.
-
-Here is the company data: {resp_data}.
+    - Only 10% or less of all companies should have a uniqueness score of 9 and above
+    - Only 20% or less of all companies should have a uniqueness score of 8
+    - Only 25% or less of all companies should have a uniqueness score of 7
+    - The rest can share the remaining.
 
 **OUTPUT_SCHEMA**
-### Provide result as a JSON with fields:
+### Provide result as a JSON with only these fields for each business:
 1. company_name
 2. relevance
-3. explanation
-4. uniqueness_score
-5. uniqueness_why
-6. effectiveness_score
-7. effectiveness_why
-8. market_diff_score
-9. combined_score
-10. confidence
-11. brief_description
-12. wow_one_liner
-13. founders
-14. technologies
-15. applications
-16. products
-17. customer_engagements
-18. hq_location
-19. current_funding_information
-20. core_technology_used
-21. known_development_stage
-22. action
+3. uniqueness_score
 """
 
 
@@ -326,14 +309,14 @@ def extract_json_from_markdown(completion: Dict[str, Any]) -> Dict[str, Any]:
             try:
                 parsed_json = json.loads(json_candidate)
             except json.JSONDecodeError:
-                match = re.search(r"({.*})", raw_content, re.DOTALL)
+                match = re.search(r"(\{.*\}|\[.*\])", raw_content, re.DOTALL)
                 if match:
                     json_candidate = match.group(1).strip()
                     parsed_json = json.loads(json_candidate)
                 else:
                     raise ValueError("No valid JSON object found via regex.")
         else:
-            match = re.search(r"({.*})", raw_content, re.DOTALL)
+            match = re.search(r"(\{.*\}|\[.*\])", raw_content, re.DOTALL)
             if match:
                 json_candidate = match.group(1).strip()
                 parsed_json = json.loads(json_candidate)
@@ -384,16 +367,6 @@ async def run_enrichment(logger, data: Dict[str, Any], limiter: Optional[AsyncLi
                 response = await gemini_enchriment.send_request()
                 if response:
                     extracted_data = extract_json_from_markdown(response)
-                    new_prompt = prompt.update_response(extracted_data)
-                    gemini_update = GeminiChat(
-                        api_key=gemini_api_key,
-                        prompt=new_prompt
-                    )
-                    resp = await gemini_update.send_request()
-                    if resp:
-                        extracted_data = extract_json_from_markdown(resp)
-                    else:
-                        logger.warning(f"No result for {name}")
                 else:
                     logger.warning(f"No result for {name}")
         else:
@@ -402,3 +375,37 @@ async def run_enrichment(logger, data: Dict[str, Any], limiter: Optional[AsyncLi
     except Exception as e:
         print(f"Attempt failed: {e}")
     return extracted_data
+
+async def compare_companies(logger, my_data: Dict[str, Any], companies_list: List[Dict[str, Any]] = [{}]) -> Optional[Dict[str, Any]]:
+    gemini_api_key = os.environ.get("GEMINI_KEY")
+    extracted_data = None
+
+    if not gemini_api_key:
+        logger.error("Error: GEMINI_KEY environment variable not set.")
+        return
+
+    try:
+        prompt = Prompt()
+        compare_chat = GeminiChat(
+                api_key=gemini_api_key,
+                prompt=prompt.compare_companies(my_data=my_data, data=companies_list)
+            )
+        resp = await compare_chat.send_request()
+        if resp:
+            extracted_data = extract_json_from_markdown(resp)
+    except Exception as e:
+        print(f"Attempt failed: {e}")
+    return extracted_data
+
+
+if __name__ == "__main__":
+    pt = Prompt()
+    res = pt.compare_companies(
+        my_data={
+            "name": "me"
+        },
+        data={
+            "name": "them"
+        }
+    )
+    print(res)
